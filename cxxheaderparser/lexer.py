@@ -307,6 +307,7 @@ class PlyLexer:
     u8string_literal = "u8" + string_literal
     u16string_literal = "u" + string_literal
     u32string_literal = "U" + string_literal
+    raw_string_literal_begin = 'R"(.*)\('
     bad_string_literal = '"' + string_char + "*" + bad_escape + string_char + '*"'
 
     # floating constants (K&R2: A.2.5.3)
@@ -426,6 +427,20 @@ class PlyLexer:
     @TOKEN(u32string_literal)
     def t_U32STRING_LITERAL(self, t: LexToken) -> LexToken:
         return t
+    
+    @TOKEN(raw_string_literal_begin)
+    def t_RAW_STRING_LITERAL(self, t: LexToken) -> LexToken:
+        esc_str = t.value[2:t.value.find('(', 2)]
+        end_str = ')' + esc_str + '"'
+        end_idx = t.lexer.lexdata.find(end_str, t.lexer.lexpos)
+        if end_idx == -1:
+            self._error('Unterminated raw string literal', t)
+        else:
+            new_lexpos = end_idx + len(end_str)
+            t.value = t.lexer.lexdata[t.lexpos:new_lexpos]
+            t.lexer.lexpos = new_lexpos
+            return t
+
 
     # unmatched string literals are caught by the preprocessor
 
